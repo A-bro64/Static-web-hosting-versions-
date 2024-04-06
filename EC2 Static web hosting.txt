@@ -1,0 +1,90 @@
+provider "aws" {
+  region = "us-east-1"  # Default reg
+}
+
+resource "aws_instance" "web_server" {
+  ami                    = "ami-0c55b159cbfafe1f0"  # AMI default
+  instance_type          = "t2.micro"               # default type
+  key_name               = "your_key_pair_name"     # ppk or pem EC2 key pair name
+  security_groups        = ["web_server_sg"]        # SG attached to EC2 down below
+  associate_public_ip_address = true                # Access to public ip #ON
+
+  user_data = <<-EOF                                #Appache and cert is up
+              #!/bin/bash
+              yum update -y
+              yum install httpd mod_ssl -y
+              systemctl start httpd
+              systemctl enable httpd
+
+              # Default SSL Cet generate a self-signed SSL certificate dowbloaded code
+
+              openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/C=US/ST=YourState/L=YourCity/O=YourOrganization/CN=example.com" -keyout /etc/pki/tls/private/server.key -out /etc/pki/tls/certs/server.crt
+
+              # Configure Apache to redirect HTTP traffic to HTTPS encript.
+
+              echo '
+              <VirtualHost *:80>
+                  ServerName example.com
+                  Redirect / https://example.com/
+              </VirtualHost>
+              ' > /etc/httpd/conf.d/redirect.conf
+
+              systemctl restart httpd
+              EOF
+
+  tags = {
+    Name = "WebServerInstance"
+  }
+}
+resource "aws_instance" "web_server" {
+ 
+# Web content HTML 
+  user_data = <<-EOF
+              #!/bin/bash
+              # Previous commands...
+
+              # Create HTML content
+              echo '<html>
+                        <head>
+                          <title>Hello World</title>
+                        </head>
+                        <body>
+                          <h1>Hello World!</h1>
+                        </body>
+                    </html>' > /var/www/html/index.html
+              EOF
+}
+
+
+resource "aws_security_group" "web_server_sg" {
+  name = "web_server_sg"
+  
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+output "instance_public_ip" {
+  value = aws_instance.web_server.public_ip
+}
+
+
+#The code is ready to use, istance has public access and it will direct only in to the <h1> Hello World
+#Further we have to set DNS and Cname conf if we want to host in for global public.
