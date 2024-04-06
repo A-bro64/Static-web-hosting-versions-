@@ -1,0 +1,25 @@
+provider "aws" {
+  region = "us-east-1" 
+}
+
+resource "aws_s3_bucket" "static_site_bucket" {
+  bucket = "your-bucket-name" # Create a unique bucket name for your static website
+  acl    = "public-read"      # Set ACL to allow public read access. 
+                              # IAM user access rule. 
+  website {
+    index_document = "index.html" # The Code should be in the index.html file
+    error_document = "index.html" # <H4> Error 405 endpoint is not avalivle 
+  }
+}
+
+resource "aws_s3_bucket_object" "index_html" {
+  bucket = aws_s3_bucket.static_site_bucket.bucket
+  key    = "index.html"
+  source = "path/to/your/index.html" # Path to your HTML file
+  content_type = "text/html"         # Set the content type for HTML file
+}
+
+
+
+
+#This static web can be finalized for the global after connecting with AWS Cloud Front, AWS rout 53 services.
